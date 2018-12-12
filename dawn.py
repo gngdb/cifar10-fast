@@ -53,7 +53,8 @@ class TSVLogger():
         return '\n'.join(self.log)
    
 def main():
-    DATA_DIR = './data'
+    #DATA_DIR = './data'
+    DATA_DIR = '/disk/scratch/gavin/data'
 
     print('Downloading datasets')
     dataset = cifar10(DATA_DIR)
