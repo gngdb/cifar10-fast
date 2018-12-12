@@ -2,9 +2,36 @@ from core import *
 from torch_backend import *
 
 #Network definition
+class GenericLowRank(nn.Module):
+    """A generic low rank layer implemented with a linear bottleneck, using two
+    Conv2ds in sequence. Preceded by a depthwise grouped convolution in keeping
+    with the other low-rank layers here."""
+    def __init__(self, in_channels, out_channels, kernel_size, rank, stride=1,
+        padding=0, dilation=1, groups=1, bias=False):
+        assert groups == 1
+        super(GenericLowRank, self).__init__()
+        if kernel_size > 1:
+            self.grouped = nn.Conv2d(in_channels, in_channels, kernel_size,
+                    stride=stride, padding=padding, dilation=dilation,
+                    groups=in_channels, bias=False)
+        else:
+            self.grouped = None
+        self.contract = nn.Conv2d(in_channels, rank, 1, bias=False)
+        self.expand = nn.Conv2d(rank, out_channels, 1, bias=bias)
+    def forward(self, x):
+        if self.grouped is not None:
+            x = self.grouped(x)
+        x = self.contract(x)
+        return self.expand(x)
+
+# compression scaling factor
+cscale = 2
+
 def conv_bn(c_in, c_out, bn_weight_init=1.0, **kw):
     return {
-        'conv': nn.Conv2d(c_in, c_out, kernel_size=3, stride=1, padding=1, bias=False), 
+        'conv': GenericLowRank(c_in, c_out, kernel_size=3, rank=max(1,c_in//cscale),
+            stride=1, padding=1, bias=False), 
+        #'conv_p': nn.Conv2d(c_in, c_out, kernel_size=1, stride=1, bias=False), 
         'bn': batch_norm(c_out, bn_weight_init=bn_weight_init, **kw), 
         'relu': nn.ReLU(True)
     }
@@ -85,7 +112,8 @@ def main():
     train_batches = Batches(Transform(train_set, train_transforms), batch_size, shuffle=True, set_random_choices=True, drop_last=True)
     test_batches = Batches(test_set, batch_size, shuffle=False, drop_last=False)
     lr = lambda step: lr_schedule(step/len(train_batches))/batch_size
-    opt = SGD(trainable_params(model), lr=lr, momentum=0.9, weight_decay=5e-4*batch_size, nesterov=True)
+    weight_decay = 5e-4*batch_size
+    opt = SGD(trainable_params(model, weight_decay), lr=lr, momentum=0.9, weight_decay=weight_decay, nesterov=True)
    
     train(model, opt, train_batches, test_batches, epochs, loggers=(TableLogger(), TSV), timer=timer, test_time_in_total=False)
     

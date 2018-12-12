@@ -3,6 +3,7 @@ import torch
 from torch import nn
 import torchvision
 from core import build_graph, cat, to_numpy
+from collections import OrderedDict
 
 torch.backends.cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -123,7 +124,30 @@ class Network(nn.Module):
                 module.half()    
         return self
 
-trainable_params = lambda model:filter(lambda p: p.requires_grad, model.parameters())
+def trainable_params(model, weight_decay):
+    compressed_params, uncompressed_params = [], []
+    compressed_size, uncompressed_size = 0., 0.
+    named_params = OrderedDict([(n,p) for n,p in model.named_parameters()])
+    for n in named_params:
+        p = named_params[n]
+        if not p.requires_grad:
+            continue
+        if 'contract' in n:
+            compressed_params.append(p)
+            expand_p = named_params[n.replace('contract','expand')]
+            uncompressed_size += p.size(1)*expand_p.size(0)
+        elif 'expand' in n:
+            compressed_params.append(p)
+        else:
+            uncompressed_params.append(p)
+            uncompressed_size += p.numel()
+        compressed_size += p.numel()
+    compression_ratio = compressed_size/uncompressed_size
+    print(compression_ratio)
+    return [{'params': compressed_params,
+                'weight_decay': compression_ratio*weight_decay},
+                #'weight_decay': weight_decay},
+            {'params': uncompressed_params}] 
 
 class TorchOptimiser():
     def __init__(self, weights, optimizer, step_number=0, **opt_params):
