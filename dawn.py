@@ -1,5 +1,14 @@
 from core import *
 from torch_backend import *
+import argparse
+import json
+import os
+
+parser = argparse.ArgumentParser()
+parser.add_argument('rankscale', type=int, help='Factor to scale the rank used in'
+        ' low-rank layers.')
+parser.add_argument('-d', action='store_true', help='Enable'
+        'compression ratio weight decay scaling')
 
 #Network definition
 class GenericLowRank(nn.Module):
@@ -25,12 +34,17 @@ class GenericLowRank(nn.Module):
         return self.expand(x)
 
 # compression scaling factor
-cscale = 10
+cscale = 2
 
 def conv_bn(c_in, c_out, bn_weight_init=1.0, **kw):
     return {
-        'conv': GenericLowRank(c_in, c_out, kernel_size=3, rank=max(1,c_in//cscale),
-            stride=1, padding=1, bias=False), 
+        'conv': nn.Conv2d(c_in, c_out, kernel_size=3, stride=1, padding=1, bias=False)
+                if c_in==3 else 
+                GenericLowRank(c_in, c_out, kernel_size=3,
+                    rank=max(1,c_out//cscale), stride=1, padding=1,
+                    bias=False), 
+        #'conv': nn.Conv2d(c_in, c_out, kernel_size=3,
+        #    stride=1, padding=1, bias=False), 
         #'conv_p': nn.Conv2d(c_in, c_out, kernel_size=1, stride=1, bias=False), 
         'bn': batch_norm(c_out, bn_weight_init=bn_weight_init, **kw), 
         'relu': nn.ReLU(True)
@@ -57,7 +71,8 @@ def basic_net(channels, weight,  pool, **kw):
     }
 
 def net(channels=None, weight=0.125, pool=nn.MaxPool2d(2), extra_layers=(), res_layers=('layer1', 'layer3'), **kw):
-    channels = channels or {'prep': 64, 'layer1': 128, 'layer2': 256, 'layer3': 512}
+    s = 1
+    channels = channels or {'prep': s*64, 'layer1': s*128, 'layer2': s*256, 'layer3': s*512}
     n = basic_net(channels, weight, pool, **kw)
     for layer in res_layers:
         n[layer]['residual'] = residual(channels[layer], **kw)
@@ -80,6 +95,12 @@ class TSVLogger():
         return '\n'.join(self.log)
    
 def main():
+    args = parser.parse_args()
+    print(os.environ['CUDA_VISIBLE_DEVICES'])
+    print(args)
+    assert False
+    global cscale
+    cscale = args.rankscale
     #DATA_DIR = './data'
     DATA_DIR = '/disk/scratch/gavin/data'
 
@@ -87,8 +108,9 @@ def main():
     dataset = cifar10(DATA_DIR)
 
     #epochs = 24
-    epochs = 96
-    lr_schedule = PiecewiseLinear([0, 5, epochs], [0, 0.4, 0])
+    epochs = 128
+    #lr_schedule = PiecewiseLinear([0, 5, epochs], [0, 0.4, 0])
+    lr_schedule = Cosine(epochs, 0.2)
     batch_size = 512
     train_transforms = [Crop(32, 32), FlipLR(), Cutout(8, 8)]
 
@@ -113,12 +135,26 @@ def main():
     train_batches = Batches(Transform(train_set, train_transforms), batch_size, shuffle=True, set_random_choices=True, drop_last=True)
     test_batches = Batches(test_set, batch_size, shuffle=False, drop_last=False)
     lr = lambda step: lr_schedule(step/len(train_batches))/batch_size
-    weight_decay = 5e-4*batch_size
-    opt = SGD(trainable_params(model, weight_decay), lr=lr, momentum=0.9, weight_decay=weight_decay, nesterov=True)
+    weight_decay = 5e-4 #*batch_size
+    if args.d:
+        opt = SGD(trainable_params(model, weight_decay), lr=lr, momentum=0.9, weight_decay=weight_decay, nesterov=True)
+    else:
+        opt = SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=weight_decay, nesterov=True)
    
-    train(model, opt, train_batches, test_batches, epochs, loggers=(TableLogger(), TSV), timer=timer, test_time_in_total=False)
+    run = train(model, opt, train_batches, test_batches, epochs, loggers=(TableLogger(), TSV), timer=timer, test_time_in_total=False)
     
-    with open('logs.tsv', 'w') as f:
+    try:
+        with open("results.json", "r") as f:
+            results.load(f)
+    except FileNotFoundError:
+        results = []
+    results.append((args.__dict__,run))
+    print(results)
+    with open("results.json", 'w') as f:
+        json.dump(results, f)
+
+    name = 'cr_weight_decay' if args.d else 'normal'
+    with open('logs/%s_%i.tsv'%(name, args.rankscale), 'w') as f:
         f.write(str(TSV))        
         
 main()

@@ -1,6 +1,7 @@
 from inspect import signature
 from collections import namedtuple
 import time
+import math
 import numpy as np
 #import pandas as pd
 from functools import singledispatch
@@ -152,6 +153,12 @@ def to_numpy(x):
 class PiecewiseLinear(namedtuple('PiecewiseLinear', ('knots', 'vals'))):
     def __call__(self, t):
         return np.interp([t], self.knots, self.vals)[0]
+
+class Cosine(object):
+    def __init__(self, epochs, lr):
+        self.epochs, self.lr = float(epochs), lr
+    def __call__(self, t):
+        return self.lr*0.5*(math.cos(math.pi*t/self.epochs)+1.)
 
 class StatsLogger():
     def __init__(self, keys):
