@@ -25,7 +25,7 @@ class GenericLowRank(nn.Module):
         return self.expand(x)
 
 # compression scaling factor
-cscale = 2
+cscale = 10
 
 def conv_bn(c_in, c_out, bn_weight_init=1.0, **kw):
     return {
@@ -86,7 +86,8 @@ def main():
     print('Downloading datasets')
     dataset = cifar10(DATA_DIR)
 
-    epochs = 24
+    #epochs = 24
+    epochs = 96
     lr_schedule = PiecewiseLinear([0, 5, epochs], [0, 0.4, 0])
     batch_size = 512
     train_transforms = [Crop(32, 32), FlipLR(), Cutout(8, 8)]

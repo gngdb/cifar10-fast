@@ -145,8 +145,8 @@ def trainable_params(model, weight_decay):
     compression_ratio = compressed_size/uncompressed_size
     print(compression_ratio)
     return [{'params': compressed_params,
-                'weight_decay': compression_ratio*weight_decay},
-                #'weight_decay': weight_decay},
+                #'weight_decay': compression_ratio*weight_decay},
+                'weight_decay': weight_decay},
             {'params': uncompressed_params}] 
 
 class TorchOptimiser():
