@@ -7,6 +7,10 @@ approximations in deep learning. Would like the experiments to run quickly.
 Tested the code on a Titan X (Pascal) GPU. `dawn.py` ran in 212 seconds and
 reached 94% accuracy.
 
+Running the same script on our V100 GPU, it took 223 seconds to run the
+same 24 epochs. Which is strange, because that GPU should be just as fast
+as the GPU on the amazon instance used in the post.
+
 Switched the full convolutions in `conv_bn` for separable convolutions and
 the network now converges to 92% accuracy in 171 seconds.
 
@@ -33,3 +37,5 @@ I suppose the problem is that this network doesn't really have time to
 worry about underfitting in the short training schedule. In both
 experiments, the train loss is *above* the test loss. What if we increase
 the training schedule by 4 times?
+
+
