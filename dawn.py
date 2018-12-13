@@ -96,9 +96,6 @@ class TSVLogger():
    
 def main():
     args = parser.parse_args()
-    print(os.environ['CUDA_VISIBLE_DEVICES'])
-    print(args)
-    assert False
     global cscale
     cscale = args.rankscale
     #DATA_DIR = './data'
