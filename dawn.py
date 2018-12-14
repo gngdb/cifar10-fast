@@ -142,11 +142,10 @@ def main():
     
     try:
         with open("results.json", "r") as f:
-            results.load(f)
+            results = json.load(f)
     except FileNotFoundError:
         results = []
     results.append((args.__dict__,run))
-    print(results)
     with open("results.json", 'w') as f:
         json.dump(results, f)
 

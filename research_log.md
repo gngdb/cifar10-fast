@@ -38,4 +38,49 @@ worry about underfitting in the short training schedule. In both
 experiments, the train loss is *above* the test loss. What if we increase
 the training schedule by 4 times?
 
+Still doesn't overfit. The weight decay setting used here is already much
+higher than normal (it's the default setting of 5e-4 multiplied by 512).
 
+13th December 2018
+==================
+
+Tried training with weight decay set to 0 and it *still* doesn't overfit.
+Train loss still tracks validation loss.
+
+Trying the same thing, but disabling the low-rank layers, maybe those just
+can't be fit.
+
+That worked, was able to get it to overfit.
+
+Experiment Plan
+---------------
+
+I can't trust the experiment settings here to really replicate the kind of
+training I'm doing in my other experiments. So, I'm going to make this
+work more like those experiments. Changes:
+
+1. Use a 100 epoch cosine annealing schedule.
+2. Use default `5e-4` weight decay.
+3. Parse args for setting the rank scaling.
+4. Save results to a shared csv.
+5. Save detailed logs to different file names, under dir `logs`.
+
+With these changes I'm expecting it to take much longer, in the region of
+1000-2000 seconds. But, this is still half an hour, which is several times
+faster than running these experiments with my own code (about 8 hours).
+
+Changed it to 128 epochs ans we get some overfitting. The train loss ends
+at 0.04, with test at 0.265. Test accuracy was 92.8%.
+
+Then, enabling the
+default 5e-4 weight decay, the exact same thing happens. Train loss 0.04,
+test 0.272. Test accuracy at 92.7%.
+
+14th December 2018
+==================
+
+Experiment completed quite quickly, running over 4 GPUs. Results are in the
+notebook on appropriate weight decay. It does seem to make a difference,
+and works slightly better. Whether some other setting for weight decay is
+not certain though. It may be worth trying the 8.8e-6 setting we were using
+in experiments originally, for example.
