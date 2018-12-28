@@ -5,6 +5,8 @@ import torchvision
 from core import build_graph, cat, to_numpy
 from collections import OrderedDict
 
+from decomposed import TnTorchConv2d
+
 torch.backends.cudnn.benchmark = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -20,7 +22,7 @@ def warmup_cudnn(model, batch_size):
     #run forward and backward pass of the model on a batch of random inputs
     #to allow benchmarking of cudnn kernels 
     batch = {
-        'input': torch.Tensor(np.random.rand(batch_size,3,32,32)).cuda().half(), 
+        'input': torch.Tensor(np.random.rand(batch_size,3,32,32)).cuda(),# .half(), 
         'target': torch.LongTensor(np.random.randint(0,10,batch_size)).cuda()
     }
     model.train(True)
@@ -58,7 +60,8 @@ class Batches():
     def __iter__(self):
         if self.set_random_choices:
             self.dataset.set_random_choices() 
-        return ({'input': x.to(device).half(), 'target': y.to(device).long()} for (x,y) in self.dataloader)
+        #return ({'input': x.to(device).half(), 'target': y.to(device).long()} for (x,y) in self.dataloader)
+        return ({'input': x.to(device), 'target': y.to(device).long()} for (x,y) in self.dataloader)
     
     def __len__(self): 
         return len(self.dataloader)
@@ -120,7 +123,7 @@ class Network(nn.Module):
     
     def half(self):
         for module in self.children():
-            if type(module) is not nn.BatchNorm2d:
+            if type(module) is not nn.BatchNorm2d: # and not isinstance(module, TnTorchConv2d):
                 module.half()    
         return self
 

@@ -84,3 +84,22 @@ notebook on appropriate weight decay. It does seem to make a difference,
 and works slightly better. Whether some other setting for weight decay is
 not certain though. It may be worth trying the 8.8e-6 setting we were using
 in experiments originally, for example.
+
+21st December 2018
+==================
+
+To design experiments involving the tensor-train decomposition, we have run
+into a problem deciding what type of decomposition we ought to use. It's
+not clear from the theory what might be better, so I'm just going to run a
+large number of experiments here and interpret the results.
+
+Two parameters control most of the design of a tensor-train decomposition:
+the rank of the cores used to represent the tensor and the number of
+dimensions in the tensor being decomposed. We're going to vary both and see
+what effect it has on the accuracy of a trained network. In addition we're
+interested in the number of parameters used by the network in each case.
+
+Note: with the current settings using float32 instead of float16 (tntorch
+doesn't support float16), the final test error with a "normal" network is
+93.5%. It would really be better if it were 94%.
+
