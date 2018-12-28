@@ -103,3 +103,14 @@ Note: with the current settings using float32 instead of float16 (tntorch
 doesn't support float16), the final test error with a "normal" network is
 93.5%. It would really be better if it were 94%.
 
+28th December 2018
+==================
+
+The experiment is now completed. The notebook is
+[here](https://gist.github.com/gngdb/2d29e5afbb21869e24952284cc287388).
+Discussed in the deficient-efficient research log
+[here](https://github.com/BayesWatch/deficient-efficient/blob/master/research-log.md).
+
+It was run with a symlink for the `decomposed.py` file in
+dificient-efficient. Not terribly good for replication, but it made
+updating and editing easier.
