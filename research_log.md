@@ -114,3 +114,56 @@ Discussed in the deficient-efficient research log
 It was run with a symlink for the `decomposed.py` file in
 dificient-efficient. Not terribly good for replication, but it made
 updating and editing easier.
+
+29th December 2018
+==================
+
+Was going to repeat the experiment with CP-decomposed Tensors, but found
+that I would get the following error:
+
+```
+Traceback (most recent call last):
+  File "dawn.py", line 144, in <module>
+    main()
+  File "dawn.py", line 98, in main
+    model = Network(union(net(), losses)).to(device)# .half()
+  File "dawn.py", line 58, in net
+    n = basic_net(channels, weight, pool, **kw)
+  File "dawn.py", line 46, in basic_net
+    'layer1': dict(conv_bn(channels['prep'], channels['layer1'], **kw),
+pool=pool),
+  File "dawn.py", line 27, in conv_bn
+    stride=1, padding=1, bias=False), 
+  File "/disk/scratch/gavin/repos/cifar10-fast/decomposed.py", line 173, in
+__init__
+    bias=bias)
+  File "/disk/scratch/gavin/repos/cifar10-fast/decomposed.py", line 59, in
+__init__
+    self.tn_weight = self.TnConstructor(self.weight.data.squeeze(),
+ranks=self.rank)
+  File "/disk/scratch/gavin/repos/cifar10-fast/decomposed.py", line 170, in
+cp
+    return tn.Tensor(tensor, ranks_cp=ranks)
+  File "/disk/scratch/gavin/repos/tntorch/tntorch/tensor.py", line 103, in
+__init__
+    prod *= grams[m]
+RuntimeError: The size of tensor a (8) must match the size of tensor b (2)
+at non-singleton dimension 1
+```
+
+This happened when the Tensor we are attempting to compress is of size:
+
+```
+torch.Size([16, 16, 16, 2])
+```
+
+Doing some messing around with tntorch interactively, it seems like this
+happens when a trailing dimension is of size 2 (for a given setting of
+rank_cp). This is not terribly scientific, but that seems to be the case,
+so adding some code to catch those instances and merge the trailing two
+dimensions in that case.
+
+Oh no, that's dumb, it happens when there is a dimension of smaller size
+than the ranks_cp setting.
+
+
