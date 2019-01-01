@@ -22,7 +22,7 @@ def conv_bn(c_in, c_out, bn_weight_init=1.0, **kw):
     return {
         'conv': nn.Conv2d(c_in, c_out, kernel_size=3, stride=1, padding=1, bias=False)
                 if c_in==3 else 
-                TensorTrain(c_in, c_out, kernel_size=3,
+                CP(c_in, c_out, kernel_size=3,
                     rank=max(1,c_out//rankscale), dimensions=max(2,dimensions),
                     stride=1, padding=1, bias=False), 
         #'conv': nn.Conv2d(c_in, c_out, kernel_size=3,
@@ -96,23 +96,23 @@ def main():
     train_transforms = [Crop(32, 32), FlipLR(), Cutout(8, 8)]
 
     model = Network(union(net(), losses)).to(device)# .half()
-    
+
     print('Warming up cudnn on random inputs')
     for size in [batch_size, len(dataset['test']['labels']) % batch_size]:
         warmup_cudnn(model, size)
-    
+
     print('Starting timer')
     timer = Timer()
-    
+
     print('Preprocessing training data')
     train_set = list(zip(transpose(normalise(pad(dataset['train']['data'], 4))), dataset['train']['labels']))
     print(f'Finished in {timer():.2} seconds')
     print('Preprocessing test data')
     test_set = list(zip(transpose(normalise(dataset['test']['data'])), dataset['test']['labels']))
     print(f'Finished in {timer():.2} seconds')
-    
+
     TSV = TSVLogger()
-    
+
     train_batches = Batches(Transform(train_set, train_transforms), batch_size, shuffle=True, set_random_choices=True, drop_last=True)
     test_batches = Batches(test_set, batch_size, shuffle=False, drop_last=False)
     lr = lambda step: lr_schedule(step/len(train_batches))/batch_size
@@ -122,9 +122,9 @@ def main():
     else:
         assert False
         opt = SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=weight_decay, nesterov=True)
-   
+
     run = train(model, opt, train_batches, test_batches, epochs, loggers=(TableLogger(), TSV), timer=timer, test_time_in_total=False)
-    
+
     # add the number of parameters used by this model:
     run['n_parameters'] = sum([p.numel() for p in model.parameters()])
 
