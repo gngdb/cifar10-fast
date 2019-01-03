@@ -7,23 +7,25 @@ import os
 from decomposed import TensorTrain, Tucker, CP
 
 parser = argparse.ArgumentParser()
-parser.add_argument('rankscale', type=int, help='Factor to scale the rank used in'
+parser.add_argument('rankscale', type=float, help='Factor to scale the rank used in'
         ' low-rank tensor decomposition')
 parser.add_argument('dimensions', type=int, help='Number of dimensions for '
         'low-rank tensor decomposition')
+parser.add_argument('decomposition', type=str, help='Tensor decomposition to use (tt/tucker).')
 #parser.add_argument('-d', action='store_true', help='Enable'
 #        'compression ratio weight decay scaling')
 
 # compression scaling factors
-rankscale = 3
+rankscale = 0.5
 dimensions = 2
+ConvClass = None
 
 def conv_bn(c_in, c_out, bn_weight_init=1.0, **kw):
     return {
         'conv': nn.Conv2d(c_in, c_out, kernel_size=3, stride=1, padding=1, bias=False)
                 if c_in==3 else 
-                CP(c_in, c_out, kernel_size=3,
-                    rank=max(1,c_out//rankscale), dimensions=max(2,dimensions),
+                ConvClass(c_in, c_out, kernel_size=3,
+                    rank_scale=rankscale, dimensions=max(2,dimensions),
                     stride=1, padding=1, bias=False), 
         #'conv': nn.Conv2d(c_in, c_out, kernel_size=3,
         #    stride=1, padding=1, bias=False), 
@@ -80,8 +82,16 @@ def main():
     args = parser.parse_args()
     global rankscale
     global dimensions
+    global ConvClass
     rankscale = args.rankscale
     dimensions = args.dimensions
+    if args.decomposition == 'tt':
+        ConvClass = TensorTrain
+    elif args.decomposition == 'tucker':
+        ConvClass = Tucker
+    else:
+        raise ValueError("%s not a valid option, only tt/tucker"
+                " accepted"%args.decomposition)
     #DATA_DIR = './data'
     DATA_DIR = '/disk/scratch/gavin/data'
 
